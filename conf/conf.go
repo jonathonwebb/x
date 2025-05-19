@@ -53,7 +53,7 @@ type Command struct {
 	Name, Desc, Usage, Help string
 	Flags                   func(*flag.FlagSet, any)
 	Vars                    map[string]string
-	Action                  func(context.Context, *Env) ExitStatus
+	Action                  func(context.Context, *Env, any) ExitStatus
 	Commands                []*Command
 
 	flags *flag.FlagSet
@@ -143,7 +143,7 @@ func (c *Command) Execute(ctx context.Context, env *Env, target any) ExitStatus 
 	env.Args = c.flags.Args()
 
 	if c.Action != nil {
-		return c.Action(ctx, env)
+		return c.Action(ctx, env, target)
 	}
 	if len(env.Args) == 0 {
 		return c.error(env, ErrMissingCommand)
