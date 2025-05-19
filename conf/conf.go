@@ -51,7 +51,7 @@ var (
 
 type Command struct {
 	Name, Desc, Usage, Help string
-	Flags                   func(*flag.FlagSet)
+	Flags                   func(*flag.FlagSet, any)
 	Vars                    map[string]string
 	Action                  func(context.Context, *Env) ExitStatus
 	Commands                []*Command
@@ -92,10 +92,10 @@ type boolFlag interface {
 	IsBoolFlag() bool
 }
 
-func (c *Command) Execute(ctx context.Context, env *Env) ExitStatus {
+func (c *Command) Execute(ctx context.Context, env *Env, target any) ExitStatus {
 	c.initFlagSet()
 	if c.Flags != nil {
-		c.Flags(c.flags)
+		c.Flags(c.flags, target)
 	}
 
 	var help bool
@@ -150,7 +150,7 @@ func (c *Command) Execute(ctx context.Context, env *Env) ExitStatus {
 	}
 	for _, cmd := range c.Commands {
 		if cmd.Name == env.Args[0] {
-			return cmd.Execute(ctx, env)
+			return cmd.Execute(ctx, env, target)
 		}
 	}
 	return c.error(env, ErrUnknownCommand)
