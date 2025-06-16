@@ -42,7 +42,7 @@ func ExampleCommand() {
 
 	rootCmd := cli.Command[*values, meta]{
 		Name:  "foo",
-		Usage: "foo [flags] command",
+		Usage: "usage: foo [flags] command",
 		Help:  "commands:\n  serve\n\nflags:\n  -env",
 		SetFlags: func(flags *flag.FlagSet, target *values) {
 			flags.StringVar(&target.env, "env", "", "")
@@ -243,7 +243,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "default", "")
@@ -274,7 +274,7 @@ func TestCommand_Execute(t *testing.T) {
 	t.Run("-h", func(t *testing.T) {
 		cmd := &cli.Command[any, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 				return cli.ExitSuccess
@@ -299,7 +299,7 @@ func TestCommand_Execute(t *testing.T) {
 	t.Run("-help", func(t *testing.T) {
 		cmd := &cli.Command[any, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 				return cli.ExitSuccess
@@ -330,7 +330,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
@@ -364,7 +364,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
@@ -393,7 +393,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
@@ -434,7 +434,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.UintVar(&v.bar, "bar", 0, "")
@@ -470,7 +470,7 @@ func TestCommand_Execute(t *testing.T) {
 
 		cmd := &cli.Command[*values, any]{
 			Name:  "foo",
-			Usage: "foo [flags]",
+			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
 			SetFlags: func(flags *flag.FlagSet, target *values) {
 				flags.UintVar(&v.bar, "bar", 0, "")
@@ -500,19 +500,19 @@ func TestCommand_Execute(t *testing.T) {
 	t.Run("missing command", func(t *testing.T) {
 		rootCmd := &cli.Command[any, any]{
 			Name:  "foo",
-			Usage: "foo [flags] command",
+			Usage: "usage: foo [flags] command",
 			Help:  "commands:\n  bar\n  baz",
 			Subcommands: []cli.Command[any, any]{
 				{
 					Name:  "bar",
-					Usage: "foo bar",
+					Usage: "usage: foo bar",
 					Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 						return cli.ExitSuccess
 					},
 				},
 				{
 					Name:  "baz",
-					Usage: "foo baz",
+					Usage: "usage: foo baz",
 					Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 						return cli.ExitSuccess
 					},
@@ -537,19 +537,19 @@ func TestCommand_Execute(t *testing.T) {
 	t.Run("unknown command", func(t *testing.T) {
 		rootCmd := &cli.Command[any, any]{
 			Name:  "foo",
-			Usage: "foo [flags] command",
+			Usage: "usage: foo [flags] command",
 			Help:  "commands:\n  bar\n  baz",
 			Subcommands: []cli.Command[any, any]{
 				{
 					Name:  "bar",
-					Usage: "foo bar",
+					Usage: "usage: foo bar",
 					Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 						return cli.ExitSuccess
 					},
 				},
 				{
 					Name:  "baz",
-					Usage: "foo baz",
+					Usage: "usage: foo baz",
 					Action: func(ctx context.Context, env cli.Env[any], target any) cli.ExitStatus {
 						return cli.ExitSuccess
 					},

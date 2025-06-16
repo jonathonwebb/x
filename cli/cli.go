@@ -148,10 +148,10 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 
 	if err := c.flagSet().Parse(env.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			env.Printf("usage: %s\n\n%s\n", c.Usage, c.Help)
+			env.Printf("%s\n\n%s\n", c.Usage, c.Help)
 			return ExitSuccess
 		}
-		env.Errorf("usage: %s\n%v\n", c.Usage, err)
+		env.Errorf("%s\n%v\n", c.Usage, err)
 		return ExitUsage
 	}
 
@@ -189,7 +189,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 		}
 	})
 	if flagErr != nil {
-		env.Errorf("usage: %s\n%v\n", c.Usage, flagErr)
+		env.Errorf("%s\n%v\n", c.Usage, flagErr)
 		return ExitUsage
 	}
 
@@ -200,7 +200,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 	}
 
 	if len(env.Args) == 0 {
-		env.Errorf("usage: %s\n%v\n", c.Usage, errMissingCommand)
+		env.Errorf("%s\n%v\n", c.Usage, errMissingCommand)
 		return ExitUsage
 	}
 
@@ -209,6 +209,6 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 		return subCmd.Execute(ctx, env, target)
 	}
 
-	env.Errorf("usage: %s\n%v\n", c.Usage, errUnknownCommand)
+	env.Errorf("%s\n%v\n", c.Usage, errUnknownCommand)
 	return ExitUsage
 }
