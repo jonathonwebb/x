@@ -27,7 +27,7 @@ func ExampleCommand() {
 		Name:  "serve",
 		Usage: "serve [flags]",
 		Help:  "flags:\n  -addr",
-		SetFlags: func(flags *flag.FlagSet, target *values) {
+		Flags: func(flags *flag.FlagSet, target *values) {
 			flags.StringVar(&target.addr, "addr", "", "")
 		},
 		Vars: map[string]string{
@@ -44,7 +44,7 @@ func ExampleCommand() {
 		Name:  "foo",
 		Usage: "usage: foo [flags] command",
 		Help:  "commands:\n  serve\n\nflags:\n  -env",
-		SetFlags: func(flags *flag.FlagSet, target *values) {
+		Flags: func(flags *flag.FlagSet, target *values) {
 			flags.StringVar(&target.env, "env", "", "")
 		},
 		Subcommands: []cli.Command[*values, meta]{serveCmd},
@@ -245,7 +245,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "default", "")
 			},
 			Vars: map[string]string{
@@ -332,7 +332,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
 				flags.BoolVar(&v.quux, "quux", false, "")
 			},
@@ -366,7 +366,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
 				flags.BoolVar(&v.quux, "quux", false, "")
 			},
@@ -395,7 +395,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.StringVar(&v.bar, "bar", "", "")
 				flags.BoolVar(&v.quux, "quux", false, "")
 			},
@@ -436,7 +436,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.UintVar(&v.bar, "bar", 0, "")
 				flags.BoolVar(&v.quux, "quux", false, "")
 			},
@@ -472,7 +472,7 @@ func TestCommand_Execute(t *testing.T) {
 			Name:  "foo",
 			Usage: "usage: foo [flags]",
 			Help:  "does foo and then bar",
-			SetFlags: func(flags *flag.FlagSet, target *values) {
+			Flags: func(flags *flag.FlagSet, target *values) {
 				flags.UintVar(&v.bar, "bar", 0, "")
 				flags.BoolVar(&v.quux, "quux", false, "")
 			},

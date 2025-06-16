@@ -92,7 +92,7 @@ type Command[T any, M any] struct {
 	Name        string                                                     // name used to invoke the command.
 	Usage       string                                                     // short usage text
 	Help        string                                                     // long help text
-	SetFlags    func(flags *flag.FlagSet, target T)                        // function for defining flags
+	Flags       func(flags *flag.FlagSet, target T)                        // function for defining flags
 	Vars        map[string]string                                          // map of flag names -> environment variables
 	Action      func(ctx context.Context, env Env[M], target T) ExitStatus // command action
 	Subcommands []Command[T, M]                                            // command subcommands
@@ -137,8 +137,8 @@ type boolFlag interface {
 // Execute parses command-line arguments from the environment, then either calls
 // the command's action or defers to the specified subcommand's Execute method.
 func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitStatus {
-	if c.SetFlags != nil {
-		c.SetFlags(c.flagSet(), target)
+	if c.Flags != nil {
+		c.Flags(c.flagSet(), target)
 	}
 
 	if len(env.Args) < 1 {
