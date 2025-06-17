@@ -89,13 +89,13 @@ var (
 // T is the type of the target value for configuration storage.
 // M is the type of the metadata provided by the execution [Env].
 type Command[T any, M any] struct {
-	Name        string                                                     // name used to invoke the command.
-	Usage       string                                                     // short usage text
-	Help        string                                                     // long help text
-	Flags       func(flags *flag.FlagSet, target T)                        // function for defining flags
-	Vars        map[string]string                                          // map of flag names -> environment variables
-	Action      func(ctx context.Context, env Env[M], target T) ExitStatus // command action
-	Subcommands []Command[T, M]                                            // command subcommands
+	Name        string                                                      // name used to invoke the command.
+	Usage       string                                                      // short usage text
+	Help        string                                                      // long help text
+	Flags       func(flags *flag.FlagSet, target T)                         // function for defining flags
+	Vars        map[string]string                                           // map of flag names -> environment variables
+	Action      func(ctx context.Context, env *Env[M], target T) ExitStatus // command action
+	Subcommands []*Command[T, M]                                            // command subcommands
 
 	fs *flag.FlagSet
 }
@@ -123,7 +123,7 @@ func (c *Command[T, M]) findSubcommand(name string) *Command[T, M] {
 	}
 	for i := range c.Subcommands {
 		if c.Subcommands[i].Name == name {
-			return &c.Subcommands[i]
+			return c.Subcommands[i]
 		}
 	}
 	return nil
@@ -136,13 +136,13 @@ type boolFlag interface {
 
 // Execute parses command-line arguments from the environment, then either calls
 // the command's action or defers to the specified subcommand's Execute method.
-func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitStatus {
+func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) ExitStatus {
 	if c.Flags != nil {
 		c.Flags(c.flagSet(), target)
 	}
 
 	if len(env.Args) < 1 {
-		env.Errorf("command requires at least one arg\n")
+		env.Errorf("no arguments provided\n")
 		return ExitFailure
 	}
 
@@ -195,6 +195,13 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 
 	env.Args = c.flagSet().Args()
 
+	if len(env.Args) > 0 {
+		subCmd := c.findSubcommand(env.Args[0])
+		if subCmd != nil {
+			return subCmd.Execute(ctx, env, target)
+		}
+	}
+
 	if c.Action != nil {
 		return c.Action(ctx, env, target)
 	}
@@ -202,11 +209,6 @@ func (c *Command[T, M]) Execute(ctx context.Context, env Env[M], target T) ExitS
 	if len(env.Args) == 0 {
 		env.Errorf("%s\n%v\n", c.Usage, errMissingCommand)
 		return ExitUsage
-	}
-
-	subCmd := c.findSubcommand(env.Args[0])
-	if subCmd != nil {
-		return subCmd.Execute(ctx, env, target)
 	}
 
 	env.Errorf("%s\n%v\n", c.Usage, errUnknownCommand)
