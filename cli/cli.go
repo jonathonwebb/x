@@ -91,13 +91,29 @@ var (
 type Command[T any, M any] struct {
 	Name        string                                                      // name used to invoke the command.
 	Usage       string                                                      // short usage text
+	UsageFunc   func(M) string                                              // short usage function
 	Help        string                                                      // long help text
+	HelpFunc    func(M) string                                              // long help function
 	Flags       func(flags *flag.FlagSet, target T)                         // function for defining flags
 	Vars        map[string]string                                           // map of flag names -> environment variables
 	Action      func(ctx context.Context, env *Env[M], target T) ExitStatus // command action
 	Subcommands []*Command[T, M]                                            // command subcommands
 
 	fs *flag.FlagSet
+}
+
+func (c *Command[T, M]) help(meta M) string {
+	if c.HelpFunc != nil {
+		return c.HelpFunc(meta)
+	}
+	return c.Help
+}
+
+func (c *Command[T, M]) usage(meta M) string {
+	if c.UsageFunc != nil {
+		return c.UsageFunc(meta)
+	}
+	return c.Usage
 }
 
 func (c *Command[T, M]) flagSet() *flag.FlagSet {
@@ -148,10 +164,10 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 
 	if err := c.flagSet().Parse(env.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			env.Printf("%s\n\n%s\n", c.Usage, c.Help)
+			env.Printf("%s\n\n%s\n", c.usage(env.Meta), c.help(env.Meta))
 			return ExitSuccess
 		}
-		env.Errorf("%s\n%v\n", c.Usage, err)
+		env.Errorf("%s\n%v\n", c.usage(env.Meta), err)
 		return ExitUsage
 	}
 
@@ -189,7 +205,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 		}
 	})
 	if flagErr != nil {
-		env.Errorf("%s\n%v\n", c.Usage, flagErr)
+		env.Errorf("%s\n%v\n", c.usage(env.Meta), flagErr)
 		return ExitUsage
 	}
 
@@ -207,10 +223,10 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 	}
 
 	if len(env.Args) == 0 {
-		env.Errorf("%s\n%v\n", c.Usage, errMissingCommand)
+		env.Errorf("%s\n%v\n", c.usage(env.Meta), errMissingCommand)
 		return ExitUsage
 	}
 
-	env.Errorf("%s\n%v\n", c.Usage, errUnknownCommand)
+	env.Errorf("%s\n%v\n", c.usage(env.Meta), errUnknownCommand)
 	return ExitUsage
 }

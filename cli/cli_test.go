@@ -418,6 +418,78 @@ func TestCommand_Execute(t *testing.T) {
 			t.Errorf("with unknown subcommand: cmd.Execute() wrote error=%q, want contains %q", got, want)
 		}
 	})
+
+	t.Run("help_func", func(t *testing.T) {
+		cmd := testCommand(t)
+		customHelp := "custom help from func"
+		cmd.HelpFunc = func(meta testMeta) string {
+			return fmt.Sprintf("%s (version: %s)", customHelp, meta.version)
+		}
+		opts := testCommandOptions{
+			args: []string{"foo", "-h"},
+			meta: testMeta{version: "1.2.3"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitSuccess; got != want {
+			t.Errorf("with HelpFunc: cmd.Execute()=%v, want %v", got, want)
+		}
+		expectedOutput := fmt.Sprintf("%s\n\n%s (version: %s)\n", fooUsage, customHelp, "1.2.3")
+		if got, want := res.outbuf, expectedOutput; got != want {
+			t.Errorf("with HelpFunc: cmd.Execute() wrote output=%q, want %q", got, want)
+		}
+		if got, want := res.errbuf, ""; got != want {
+			t.Errorf("with HelpFunc: cmd.Execute() wrote error=%q, want %q", got, want)
+		}
+	})
+
+	t.Run("usage_func", func(t *testing.T) {
+		cmd := testCommand(t)
+		customUsage := "custom usage from func"
+		cmd.UsageFunc = func(meta testMeta) string {
+			return fmt.Sprintf("%s (version: %s)", customUsage, meta.version)
+		}
+		opts := testCommandOptions{
+			args: []string{"foo", "-h"},
+			meta: testMeta{version: "1.2.3"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitSuccess; got != want {
+			t.Errorf("with UsageFunc: cmd.Execute()=%v, want %v", got, want)
+		}
+		expectedOutput := fmt.Sprintf("%s (version: %s)\n\n%s\n", customUsage, "1.2.3", fooHelp)
+		if got, want := res.outbuf, expectedOutput; got != want {
+			t.Errorf("with UsageFunc: cmd.Execute() wrote output=%q, want %q", got, want)
+		}
+		if got, want := res.errbuf, ""; got != want {
+			t.Errorf("with UsageFunc: cmd.Execute() wrote error=%q, want %q", got, want)
+		}
+	})
+
+	t.Run("usage_func_with_error", func(t *testing.T) {
+		cmd := testCommand(t)
+		customUsage := "custom usage for error"
+		cmd.UsageFunc = func(meta testMeta) string {
+			return fmt.Sprintf("%s (version: %s)", customUsage, meta.version)
+		}
+		opts := testCommandOptions{
+			args: []string{"foo", "-invalid"},
+			meta: testMeta{version: "1.2.3"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitUsage; got != want {
+			t.Errorf("with UsageFunc error: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.outbuf, ""; got != want {
+			t.Errorf("with UsageFunc error: cmd.Execute() wrote output=%q, want %q", got, want)
+		}
+		expectedUsage := fmt.Sprintf("%s (version: %s)", customUsage, "1.2.3")
+		if got, want := res.errbuf, expectedUsage; !strings.Contains(got, want) {
+			t.Errorf("with UsageFunc error: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
 }
 
 func ExampleCommand() {
