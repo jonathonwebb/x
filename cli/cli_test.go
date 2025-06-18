@@ -401,7 +401,7 @@ func TestCommand_Execute(t *testing.T) {
 
 	t.Run("unknown_subcommand", func(t *testing.T) {
 		cmd := testCommand(t)
-		cmd.Action = nil // Remove action so it requires a subcommand
+		cmd.Action = nil
 		opts := testCommandOptions{args: []string{"foo", "invalid"}}
 		res := executeTestCommand(t, cmd, opts)
 

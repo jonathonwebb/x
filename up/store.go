@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrLocked         = errors.New("version store is locked for writing")
-	ErrInitialVersion = errors.New("initial version is current")
+	ErrLocked          = errors.New("version store is locked for writing")
+	ErrInitialVersion  = errors.New("initial version is current")
+	ErrVersionNotFound = errors.New("version not found")
 )
 
 type Store interface {

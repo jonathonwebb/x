@@ -66,7 +66,7 @@ func (s *Sqlite3Store) Version(ctx context.Context) (int64, error) {
 	err := row.Scan(&version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, up.ErrInitialVersion
+			return 0, nil
 		}
 		return 0, err
 	}
@@ -81,8 +81,16 @@ func (s *Sqlite3Store) Insert(ctx context.Context, v int64) error {
 }
 
 func (s *Sqlite3Store) Remove(ctx context.Context, v int64) error {
-	if _, err := s.instance.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version_id = ?", v); err != nil {
+	res, err := s.instance.ExecContext(ctx, "DELETE FROM schema_migrations WHERE version_id = ?", v)
+	if err != nil {
 		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return up.ErrVersionNotFound
 	}
 	return nil
 }
