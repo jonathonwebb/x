@@ -1,3 +1,4 @@
+// Package sqlite3store provides a SQLite3 implementation of the up.Store interface.
 package sqlite3store
 
 import (

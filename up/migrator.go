@@ -1,3 +1,4 @@
+// Package up provides a simple database migration tool.
 package up
 
 import (
@@ -13,6 +14,7 @@ const (
 	RevertTargetInitial = 0
 )
 
+// A Migrator stores migrations and provides methods to apply or revert them.
 type Migrator struct {
 	Store   Store
 	Sources []*Migration
@@ -64,6 +66,8 @@ func (m *Migrator) check() error {
 	return nil
 }
 
+// Run applies migrations up to and including the specified version. The special
+// value -1 applies all pending migrations.
 func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
 	m.log("starting migration run to version %d\n", to)
 	m.debug("run parameters: target=%d, sources=%d, holdLockOnFailure=%t\n", to, len(m.Sources), m.HoldLockOnFailure)
@@ -158,6 +162,8 @@ func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
 	return nil
 }
 
+// Revert reverses migrations down to and excluding the provided version. The
+// special value 0 reverts all migrations.
 func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
 	m.log("starting migration revert to version %d\n", to)
 	m.debug("revert parameters: target=%d, sources=%d, holdLockOnFailure=%t\n", to, len(m.Sources), m.HoldLockOnFailure)

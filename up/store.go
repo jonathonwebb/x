@@ -12,6 +12,7 @@ var (
 	ErrVersionNotFound = errors.New("version not found")
 )
 
+// Store is an interface for a schema version store.
 type Store interface {
 	DB() *sql.DB
 	Init(context.Context) error
