@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"text/template"
 )
 
 // An Env represents the execution environment for a [Command].
@@ -34,6 +35,19 @@ func (e Env[M]) Errorf(format string, args ...any) {
 	if e.Err != nil {
 		fmt.Fprintf(e.Err, format, args...)
 	}
+}
+
+func (e Env[M]) ExecMetaTmpl(s string) (string, error) {
+	tmpl, err := template.New("meta").Parse(s)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	err = tmpl.Execute(&b, e.Meta)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
 
 func (e Env[M]) hasVar(name string) bool {
@@ -91,37 +105,14 @@ var (
 type Command[T any, M any] struct {
 	Name        string                                                      // name used to invoke the command.
 	Usage       string                                                      // short usage text
-	UsageFunc   func(M) string                                              // short usage function
 	Help        string                                                      // long help text
-	HelpFunc    func(M) string                                              // long help function
 	Flags       func(flags *flag.FlagSet, target T)                         // function for defining flags
 	Vars        map[string]string                                           // map of flag names -> environment variables
-	VarsFunc    func(M) map[string]string                                   // enviroment variable map function
 	Action      func(ctx context.Context, env *Env[M], target T) ExitStatus // command action
 	Subcommands []*Command[T, M]                                            // command subcommands
 
-	fs *flag.FlagSet
-}
-
-func (c *Command[T, M]) help(meta M) string {
-	if c.HelpFunc != nil {
-		return c.HelpFunc(meta)
-	}
-	return c.Help
-}
-
-func (c *Command[T, M]) usage(meta M) string {
-	if c.UsageFunc != nil {
-		return c.UsageFunc(meta)
-	}
-	return c.Usage
-}
-
-func (c *Command[T, M]) vars(meta M) map[string]string {
-	if c.VarsFunc != nil {
-		return c.VarsFunc(meta)
-	}
-	return c.Vars
+	vars map[string]string
+	fs   *flag.FlagSet
 }
 
 func (c *Command[T, M]) flagSet() *flag.FlagSet {
@@ -133,8 +124,8 @@ func (c *Command[T, M]) flagSet() *flag.FlagSet {
 	return c.fs
 }
 
-func (c *Command[T, M]) getFlagVar(flagName string, meta M) (string, bool) {
-	vars := c.vars(meta)
+func (c *Command[T, M]) getFlagVar(flagName string) (string, bool) {
+	vars := c.vars
 	if vars == nil {
 		return "", false
 	}
@@ -162,6 +153,30 @@ type boolFlag interface {
 // Execute parses command-line arguments from the environment, then either calls
 // the command's action or defers to the specified subcommand's Execute method.
 func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) ExitStatus {
+	usage, err := env.ExecMetaTmpl(c.Usage)
+	if err != nil {
+		env.Errorf("error executing usage template: %v\n", err)
+		return ExitFailure
+	}
+
+	help, err := env.ExecMetaTmpl(c.Help)
+	if err != nil {
+		env.Errorf("error executing help template: %v\n", err)
+		return ExitFailure
+	}
+
+	c.vars = make(map[string]string)
+	if c.Vars != nil {
+		for k, v := range c.Vars {
+			newV, err := env.ExecMetaTmpl(v)
+			if err != nil {
+				env.Errorf("error executing template for var %s: %v\n", k, err)
+				return ExitFailure
+			}
+			c.vars[k] = newV
+		}
+	}
+
 	if c.Flags != nil {
 		c.Flags(c.flagSet(), target)
 	}
@@ -173,10 +188,10 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 
 	if err := c.flagSet().Parse(env.Args[1:]); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
-			env.Printf("%s\n\n%s\n", c.usage(env.Meta), c.help(env.Meta))
+			env.Printf("%s\n\n%s\n", usage, help)
 			return ExitSuccess
 		}
-		env.Errorf("%s\n%v\n", c.usage(env.Meta), err)
+		env.Errorf("%s\n%v\n", usage, err)
 		return ExitUsage
 	}
 
@@ -195,7 +210,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 			return
 		}
 
-		varName, hasVar := c.getFlagVar(f.Name, env.Meta)
+		varName, hasVar := c.getFlagVar(f.Name)
 		if !hasVar {
 			return
 		}
@@ -214,7 +229,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 		}
 	})
 	if flagErr != nil {
-		env.Errorf("%s\n%v\n", c.usage(env.Meta), flagErr)
+		env.Errorf("%s\n%v\n", usage, flagErr)
 		return ExitUsage
 	}
 
@@ -232,10 +247,10 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 	}
 
 	if len(env.Args) == 0 {
-		env.Errorf("%s\n%v\n", c.usage(env.Meta), errMissingCommand)
+		env.Errorf("%s\n%v\n", usage, errMissingCommand)
 		return ExitUsage
 	}
 
-	env.Errorf("%s\n%v\n", c.usage(env.Meta), errUnknownCommand)
+	env.Errorf("%s\n%v\n", usage, errUnknownCommand)
 	return ExitUsage
 }

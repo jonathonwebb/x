@@ -418,107 +418,108 @@ func TestCommand_Execute(t *testing.T) {
 			t.Errorf("with unknown subcommand: cmd.Execute() wrote error=%q, want contains %q", got, want)
 		}
 	})
+}
 
-	t.Run("help_func", func(t *testing.T) {
+func TestCommand_Execute_TemplateFailures(t *testing.T) {
+	t.Run("usage_template_parse_failure", func(t *testing.T) {
 		cmd := testCommand(t)
-		customHelp := "custom help from func"
-		cmd.HelpFunc = func(meta testMeta) string {
-			return fmt.Sprintf("%s (version: %s)", customHelp, meta.version)
-		}
-		opts := testCommandOptions{
-			args: []string{"foo", "-h"},
-			meta: testMeta{version: "1.2.3"},
-		}
-		res := executeTestCommand(t, cmd, opts)
-
-		if got, want := res.status, cli.ExitSuccess; got != want {
-			t.Errorf("with HelpFunc: cmd.Execute()=%v, want %v", got, want)
-		}
-		expectedOutput := fmt.Sprintf("%s\n\n%s (version: %s)\n", fooUsage, customHelp, "1.2.3")
-		if got, want := res.outbuf, expectedOutput; got != want {
-			t.Errorf("with HelpFunc: cmd.Execute() wrote output=%q, want %q", got, want)
-		}
-		if got, want := res.errbuf, ""; got != want {
-			t.Errorf("with HelpFunc: cmd.Execute() wrote error=%q, want %q", got, want)
-		}
-	})
-
-	t.Run("usage_func", func(t *testing.T) {
-		cmd := testCommand(t)
-		customUsage := "custom usage from func"
-		cmd.UsageFunc = func(meta testMeta) string {
-			return fmt.Sprintf("%s (version: %s)", customUsage, meta.version)
-		}
-		opts := testCommandOptions{
-			args: []string{"foo", "-h"},
-			meta: testMeta{version: "1.2.3"},
-		}
-		res := executeTestCommand(t, cmd, opts)
-
-		if got, want := res.status, cli.ExitSuccess; got != want {
-			t.Errorf("with UsageFunc: cmd.Execute()=%v, want %v", got, want)
-		}
-		expectedOutput := fmt.Sprintf("%s (version: %s)\n\n%s\n", customUsage, "1.2.3", fooHelp)
-		if got, want := res.outbuf, expectedOutput; got != want {
-			t.Errorf("with UsageFunc: cmd.Execute() wrote output=%q, want %q", got, want)
-		}
-		if got, want := res.errbuf, ""; got != want {
-			t.Errorf("with UsageFunc: cmd.Execute() wrote error=%q, want %q", got, want)
-		}
-	})
-
-	t.Run("usage_func_with_error", func(t *testing.T) {
-		cmd := testCommand(t)
-		customUsage := "custom usage for error"
-		cmd.UsageFunc = func(meta testMeta) string {
-			return fmt.Sprintf("%s (version: %s)", customUsage, meta.version)
-		}
-		opts := testCommandOptions{
-			args: []string{"foo", "-invalid"},
-			meta: testMeta{version: "1.2.3"},
-		}
-		res := executeTestCommand(t, cmd, opts)
-
-		if got, want := res.status, cli.ExitUsage; got != want {
-			t.Errorf("with UsageFunc error: cmd.Execute()=%v, want %v", got, want)
-		}
-		if got, want := res.outbuf, ""; got != want {
-			t.Errorf("with UsageFunc error: cmd.Execute() wrote output=%q, want %q", got, want)
-		}
-		expectedUsage := fmt.Sprintf("%s (version: %s)", customUsage, "1.2.3")
-		if got, want := res.errbuf, expectedUsage; !strings.Contains(got, want) {
-			t.Errorf("with UsageFunc error: cmd.Execute() wrote error=%q, want contains %q", got, want)
-		}
-	})
-
-	t.Run("VarsFunc", func(t *testing.T) {
-		cmd := testCommand(t)
-		cmd.VarsFunc = func(meta testMeta) map[string]string {
-			return map[string]string{
-				"env":     "FOO_ENV_DYNAMIC",
-				"verbose": "FOO_VERBOSE_DYNAMIC",
-			}
-		}
-		cmd.Action = func(ctx context.Context, env *cli.Env[testMeta], target *testTarget) cli.ExitStatus {
-			env.Printf("env=%s verbose=%t\n", target.env, target.verbose)
-			return cli.ExitSuccess
-		}
-
+		cmd.Usage = "{{.InvalidSyntax" // Invalid template syntax
 		opts := testCommandOptions{
 			args: []string{"foo"},
-			vars: map[string]string{
-				"FOO_ENV_DYNAMIC":     "staging",
-				"FOO_VERBOSE_DYNAMIC": "true",
-			},
-			meta: testMeta{version: "v1"},
+			meta: testMeta{version: "1.0.0"},
 		}
 		res := executeTestCommand(t, cmd, opts)
 
-		if got, want := res.status, cli.ExitSuccess; got != want {
-			t.Errorf("with VarsFunc: cmd.Execute()=%v, want %v", got, want)
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("usage template parse failure: cmd.Execute()=%v, want %v", got, want)
 		}
-		if got, want := res.outbuf, "env=staging verbose=true\n"; got != want {
-			t.Errorf("with VarsFunc: cmd.Execute() wrote output=%q, want %q", got, want)
+		if got, want := res.errbuf, "error executing usage template"; !strings.Contains(got, want) {
+			t.Errorf("usage template parse failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
+
+	t.Run("usage_template_exec_failure", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.Usage = "{{.NonExistentField}}" // Field doesn't exist in testMeta
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			meta: testMeta{version: "1.0.0"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("usage template exec failure: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.errbuf, "error executing usage template"; !strings.Contains(got, want) {
+			t.Errorf("usage template exec failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
+
+	t.Run("help_template_parse_failure", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.Help = "{{.InvalidSyntax" // Invalid template syntax
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			meta: testMeta{version: "1.0.0"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("help template parse failure: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.errbuf, "error executing help template"; !strings.Contains(got, want) {
+			t.Errorf("help template parse failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
+
+	t.Run("help_template_exec_failure", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.Help = "{{.NonExistentField}}" // Field doesn't exist in testMeta
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			meta: testMeta{version: "1.0.0"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("help template exec failure: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.errbuf, "error executing help template"; !strings.Contains(got, want) {
+			t.Errorf("help template exec failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
+
+	t.Run("vars_template_parse_failure", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.Vars["env"] = "{{.InvalidSyntax" // Invalid template syntax
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			meta: testMeta{version: "1.0.0"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("vars template parse failure: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.errbuf, "error executing template for var env"; !strings.Contains(got, want) {
+			t.Errorf("vars template parse failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
+		}
+	})
+
+	t.Run("vars_template_exec_failure", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.Vars["env"] = "{{.NonExistentField}}" // Field doesn't exist in testMeta
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			meta: testMeta{version: "1.0.0"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitFailure; got != want {
+			t.Errorf("vars template exec failure: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.errbuf, "error executing template for var env"; !strings.Contains(got, want) {
+			t.Errorf("vars template exec failure: cmd.Execute() wrote error=%q, want contains %q", got, want)
 		}
 	})
 }
