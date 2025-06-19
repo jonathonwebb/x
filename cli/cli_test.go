@@ -490,6 +490,37 @@ func TestCommand_Execute(t *testing.T) {
 			t.Errorf("with UsageFunc error: cmd.Execute() wrote error=%q, want contains %q", got, want)
 		}
 	})
+
+	t.Run("VarsFunc", func(t *testing.T) {
+		cmd := testCommand(t)
+		cmd.VarsFunc = func(meta testMeta) map[string]string {
+			return map[string]string{
+				"env":     "FOO_ENV_DYNAMIC",
+				"verbose": "FOO_VERBOSE_DYNAMIC",
+			}
+		}
+		cmd.Action = func(ctx context.Context, env *cli.Env[testMeta], target *testTarget) cli.ExitStatus {
+			env.Printf("env=%s verbose=%t\n", target.env, target.verbose)
+			return cli.ExitSuccess
+		}
+
+		opts := testCommandOptions{
+			args: []string{"foo"},
+			vars: map[string]string{
+				"FOO_ENV_DYNAMIC":     "staging",
+				"FOO_VERBOSE_DYNAMIC": "true",
+			},
+			meta: testMeta{version: "v1"},
+		}
+		res := executeTestCommand(t, cmd, opts)
+
+		if got, want := res.status, cli.ExitSuccess; got != want {
+			t.Errorf("with VarsFunc: cmd.Execute()=%v, want %v", got, want)
+		}
+		if got, want := res.outbuf, "env=staging verbose=true\n"; got != want {
+			t.Errorf("with VarsFunc: cmd.Execute() wrote output=%q, want %q", got, want)
+		}
+	})
 }
 
 func ExampleCommand() {

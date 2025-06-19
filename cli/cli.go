@@ -96,6 +96,7 @@ type Command[T any, M any] struct {
 	HelpFunc    func(M) string                                              // long help function
 	Flags       func(flags *flag.FlagSet, target T)                         // function for defining flags
 	Vars        map[string]string                                           // map of flag names -> environment variables
+	VarsFunc    func(M) map[string]string                                   // enviroment variable map function
 	Action      func(ctx context.Context, env *Env[M], target T) ExitStatus // command action
 	Subcommands []*Command[T, M]                                            // command subcommands
 
@@ -116,6 +117,13 @@ func (c *Command[T, M]) usage(meta M) string {
 	return c.Usage
 }
 
+func (c *Command[T, M]) vars(meta M) map[string]string {
+	if c.VarsFunc != nil {
+		return c.VarsFunc(meta)
+	}
+	return c.Vars
+}
+
 func (c *Command[T, M]) flagSet() *flag.FlagSet {
 	if c.fs == nil {
 		c.fs = flag.NewFlagSet(c.Name, flag.ContinueOnError)
@@ -125,11 +133,12 @@ func (c *Command[T, M]) flagSet() *flag.FlagSet {
 	return c.fs
 }
 
-func (c *Command[T, M]) getFlagVar(flagName string) (string, bool) {
-	if c.Vars == nil {
+func (c *Command[T, M]) getFlagVar(flagName string, meta M) (string, bool) {
+	vars := c.vars(meta)
+	if vars == nil {
 		return "", false
 	}
-	varName, ok := c.Vars[flagName]
+	varName, ok := vars[flagName]
 	return varName, ok
 }
 
@@ -186,7 +195,7 @@ func (c *Command[T, M]) Execute(ctx context.Context, env *Env[M], target T) Exit
 			return
 		}
 
-		varName, hasVar := c.getFlagVar(f.Name)
+		varName, hasVar := c.getFlagVar(f.Name, env.Meta)
 		if !hasVar {
 			return
 		}
