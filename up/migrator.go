@@ -108,17 +108,15 @@ func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
 		shouldRelease = false
 	}
 
-	for _, migration := range m.Sources {
-		if migration.Version > remoteVersion && migration.Version <= to {
-			m.debug("applying migration: %d", migration.Version)
+	for _, migration := range toApply {
+		m.debug("applying migration: %d", migration.Version)
 
-			if err := migration.Run(ctx, m.Store.DB()); err != nil {
-				return fmt.Errorf("failed to apply migration %d: %w", migration.Version, err)
-			}
+		if err := migration.Run(ctx, m.Store.DB()); err != nil {
+			return fmt.Errorf("failed to apply migration %d: %w", migration.Version, err)
+		}
 
-			if err := m.Store.Insert(ctx, migration.Version); err != nil {
-				return fmt.Errorf("failed to insert migration %d: %w", migration.Version, err)
-			}
+		if err := m.Store.Insert(ctx, migration.Version); err != nil {
+			return fmt.Errorf("failed to insert migration %d: %w", migration.Version, err)
 		}
 	}
 
