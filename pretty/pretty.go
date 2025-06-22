@@ -22,7 +22,7 @@ type PrettyHandler struct {
 	w    io.Writer
 }
 
-func NewPrettyHandler(w io.Writer, opts *slog.HandlerOptions) *PrettyHandler {
+func NewHandler(w io.Writer, opts *slog.HandlerOptions) *PrettyHandler {
 	h := &PrettyHandler{w: w, mu: &sync.Mutex{}}
 	if opts != nil {
 		h.opts = *opts
