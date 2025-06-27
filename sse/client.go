@@ -14,7 +14,7 @@ type Event struct {
 	Data string
 }
 
-type Client struct {
+type EventSource struct {
 	HTTPClient *http.Client
 }
 
@@ -22,7 +22,7 @@ type ConnectConfig struct {
 	Types []string
 }
 
-func (c *Client) Connect(req *http.Request, msgs chan<- Event, cfg ConnectConfig) error {
+func (c *EventSource) Connect(req *http.Request, msgs chan<- Event, cfg ConnectConfig) error {
 	if req == nil {
 		return fmt.Errorf("request is nil")
 	}
