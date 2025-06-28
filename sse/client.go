@@ -33,6 +33,10 @@ type EventSource struct {
 }
 
 func (es *EventSource) Connect(req *http.Request) error {
+	if es.HttpClient == nil {
+		es.HttpClient = http.DefaultClient
+	}
+
 	if es.reconnectionTime == 0 {
 		es.reconnectionTime = defaultReconnectionTime
 	}
