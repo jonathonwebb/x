@@ -420,7 +420,7 @@ func TestMigrator_Run(t *testing.T) {
 				HoldLockOnFailure: tt.holdLockOnFailure,
 			}
 
-			err := migrator.Run(context.Background(), tt.target)
+			_, err := migrator.Run(context.Background(), tt.target)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("expected error but got none")
@@ -616,7 +616,7 @@ func TestMigrator_Revert(t *testing.T) {
 				HoldLockOnFailure: tt.holdLockOnFailure,
 			}
 
-			err := migrator.Revert(context.Background(), tt.target)
+			_, err := migrator.Revert(context.Background(), tt.target)
 
 			if tt.wantErr && err == nil {
 				t.Errorf("expected error but got none")
@@ -665,8 +665,8 @@ func TestMigrator_ValidationConsistency(t *testing.T) {
 			}
 
 			// Both Run and Revert should fail validation consistently
-			upErr := migrator.Run(context.Background(), 1)
-			downErr := migrator.Revert(context.Background(), 0)
+			_, upErr := migrator.Run(context.Background(), 1)
+			_, downErr := migrator.Revert(context.Background(), 0)
 
 			if upErr == nil {
 				t.Error("Run should have failed validation")
@@ -691,7 +691,7 @@ func TestMigrator_InitialVersionHandling(t *testing.T) {
 			Sources: createMigrations(1, 2),
 		}
 
-		err := migrator.Run(context.Background(), 2)
+		_, err := migrator.Run(context.Background(), 2)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -709,7 +709,7 @@ func TestMigrator_InitialVersionHandling(t *testing.T) {
 			Sources: createMigrations(1, 2),
 		}
 
-		err := migrator.Revert(context.Background(), 1)
+		_, err := migrator.Revert(context.Background(), 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -728,7 +728,7 @@ func TestMigrator_LockBehavior(t *testing.T) {
 			Sources: createMigrations(1, 2),
 		}
 
-		err := migrator.Run(context.Background(), 2)
+		_, err := migrator.Run(context.Background(), 2)
 		if err != nil {
 			t.Fatalf("run failed: %v", err)
 		}
@@ -740,7 +740,7 @@ func TestMigrator_LockBehavior(t *testing.T) {
 			t.Error("lock should be released after successful operation")
 		}
 
-		err = migrator.Revert(context.Background(), 1)
+		_, err = migrator.Revert(context.Background(), 1)
 		if err != nil {
 			t.Fatalf("revert failed: %v", err)
 		}
@@ -774,7 +774,7 @@ func TestMigrator_LockBehavior(t *testing.T) {
 					HoldLockOnFailure: tt.holdLock,
 				}
 
-				err := migrator.Run(context.Background(), 1)
+				_, err := migrator.Run(context.Background(), 1)
 				if err == nil {
 					t.Error("expected error from migration")
 				}
@@ -795,7 +795,7 @@ func TestMigrator_StoreCallPatterns(t *testing.T) {
 			Sources: createMigrations(1, 2),
 		}
 
-		err := migrator.Run(context.Background(), 2)
+		_, err := migrator.Run(context.Background(), 2)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -826,7 +826,7 @@ func TestMigrator_StoreCallPatterns(t *testing.T) {
 			Sources: createMigrations(1, 2, 3),
 		}
 
-		err := migrator.Revert(context.Background(), 1)
+		_, err := migrator.Revert(context.Background(), 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -849,7 +849,7 @@ func TestMigrator_BoundaryConditions(t *testing.T) {
 			Sources: createMigrations(1, 2, 3),
 		}
 
-		err := migrator.Run(context.Background(), 0)
+		_, err := migrator.Run(context.Background(), 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -866,7 +866,7 @@ func TestMigrator_BoundaryConditions(t *testing.T) {
 			Sources: createMigrations(1, 2, 3),
 		}
 
-		err := migrator.Run(context.Background(), 9999)
+		_, err := migrator.Run(context.Background(), 9999)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -884,7 +884,7 @@ func TestMigrator_BoundaryConditions(t *testing.T) {
 			Sources: createMigrations(1, 2, 3),
 		}
 
-		err := migrator.Run(context.Background(), 3)
+		_, err := migrator.Run(context.Background(), 3)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -909,7 +909,7 @@ func TestMigrator_ConcurrentSafety(t *testing.T) {
 			t.Fatalf("failed to pre-lock store: %v", err)
 		}
 
-		err = migrator.Run(context.Background(), 1)
+		_, err = migrator.Run(context.Background(), 1)
 		if err == nil {
 			t.Error("expected error when store is already locked")
 		}
@@ -938,7 +938,7 @@ func TestMigrator_Integration(t *testing.T) {
 
 	for i, step := range steps {
 		t.Run(fmt.Sprintf("step_%d_to_%d", i+1, step.target), func(t *testing.T) {
-			err := migrator.Run(context.Background(), step.target)
+			_, err := migrator.Run(context.Background(), step.target)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -960,7 +960,7 @@ func TestMigrator_Integration(t *testing.T) {
 
 	for i, step := range rollbackSteps {
 		t.Run(fmt.Sprintf("rollback_%d_to_%d", i+1, step.target), func(t *testing.T) {
-			err := migrator.Revert(context.Background(), step.target)
+			_, err := migrator.Revert(context.Background(), step.target)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}

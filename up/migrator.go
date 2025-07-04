@@ -59,17 +59,17 @@ func (m *Migrator) check() error {
 
 // Run applies migrations up to and including the specified version. The special
 // value -1 applies all pending migrations.
-func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
+func (m *Migrator) Run(ctx context.Context, to int64) (n int, err error) {
 	if err := m.check(); err != nil {
-		return fmt.Errorf("invalid sources: %w", err)
+		return 0, fmt.Errorf("invalid sources: %w", err)
 	}
 
 	if err := m.Store.Init(ctx); err != nil {
-		return fmt.Errorf("failed to init version store: %w", err)
+		return 0, fmt.Errorf("failed to init version store: %w", err)
 	}
 
 	if err := m.Store.Lock(ctx); err != nil {
-		return fmt.Errorf("failed to get version store lock: %w", err)
+		return 0, fmt.Errorf("failed to get version store lock: %w", err)
 	}
 	shouldRelease := true
 	defer func() {
@@ -87,7 +87,7 @@ func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
 	remoteVersion, err = m.Store.Version(ctx)
 	if err != nil {
 		if !errors.Is(err, ErrInitialVersion) {
-			return fmt.Errorf("failed to get version store state: %w", err)
+			return 0, fmt.Errorf("failed to get version store state: %w", err)
 		}
 	}
 	m.debug("current version: %d", remoteVersion)
@@ -99,36 +99,38 @@ func (m *Migrator) Run(ctx context.Context, to int64) (err error) {
 		}
 	}
 
-	m.log("%d migrations to apply", len(toApply))
 	if len(toApply) == 0 {
-		return nil
+		return 0, nil
 	}
 
 	if m.HoldLockOnFailure {
 		shouldRelease = false
 	}
 
+	n = 0
 	for _, migration := range toApply {
 		m.debug("applying migration: %d", migration.Version)
 
 		if err := migration.Run(ctx, m.Store.DB()); err != nil {
-			return fmt.Errorf("failed to apply migration %d: %w", migration.Version, err)
+			return n, fmt.Errorf("failed to apply migration %d: %w", migration.Version, err)
 		}
 
 		if err := m.Store.Insert(ctx, migration.Version); err != nil {
-			return fmt.Errorf("failed to insert migration %d: %w", migration.Version, err)
+			return n, fmt.Errorf("failed to insert migration %d: %w", migration.Version, err)
 		}
+
+		n += 1
 	}
 
 	shouldRelease = true
-	return nil
+	return n, nil
 }
 
 // Revert reverses migrations down to and excluding the provided version. The
 // special value 0 reverts all migrations.
-func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
+func (m *Migrator) Revert(ctx context.Context, to int64) (n int, err error) {
 	if err := m.check(); err != nil {
-		return fmt.Errorf("invalid sources: %w", err)
+		return 0, fmt.Errorf("invalid sources: %w", err)
 	}
 
 	migrationCmpFunc := func(s *Migration, t int64) int {
@@ -144,16 +146,16 @@ func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
 	if to != RevertTargetInitial {
 		_, ok := slices.BinarySearchFunc(m.Sources, to, migrationCmpFunc)
 		if !ok {
-			return fmt.Errorf("missing target version migration: %d", to)
+			return 0, fmt.Errorf("missing target version migration: %d", to)
 		}
 	}
 
 	if err := m.Store.Init(ctx); err != nil {
-		return fmt.Errorf("failed to init version store: %w", err)
+		return 0, fmt.Errorf("failed to init version store: %w", err)
 	}
 
 	if err := m.Store.Lock(ctx); err != nil {
-		return fmt.Errorf("failed to get version store lock: %w", err)
+		return 0, fmt.Errorf("failed to get version store lock: %w", err)
 	}
 
 	shouldRelease := true
@@ -173,10 +175,9 @@ func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
 	remoteVersion, err = m.Store.Version(ctx)
 	if err != nil {
 		if errors.Is(err, ErrInitialVersion) {
-			m.log("already at initial version, nothing to revert")
-			return nil
+			return 0, nil
 		}
-		return fmt.Errorf("failed to get version store state: %w", err)
+		return 0, fmt.Errorf("failed to get version store state: %w", err)
 	}
 	m.debug("current version: %d", remoteVersion)
 
@@ -184,7 +185,7 @@ func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
 		shouldRelease = false
 	}
 
-	revertCount := 0
+	n = 0
 	for {
 		if remoteVersion <= to {
 			m.debug("reached target version %d, stopping", to)
@@ -193,34 +194,31 @@ func (m *Migrator) Revert(ctx context.Context, to int64) (err error) {
 
 		idx, ok := slices.BinarySearchFunc(m.Sources, remoteVersion, migrationCmpFunc)
 		if !ok {
-			return fmt.Errorf("missing remote version migration: %d", remoteVersion)
+			return n, fmt.Errorf("missing remote version migration: %d", remoteVersion)
 		}
 
 		migration := m.Sources[idx]
 		m.debug("reverting migration: %d", migration.Version)
 
 		if err := migration.Revert(ctx, m.Store.DB()); err != nil {
-			return fmt.Errorf("failed to revert migration %d: %w", migration.Version, err)
+			return n, fmt.Errorf("failed to revert migration %d: %w", migration.Version, err)
 		}
 
 		if err := m.Store.Remove(ctx, migration.Version); err != nil {
-			return fmt.Errorf("failed to delete migration %d from version store: %w", migration.Version, err)
+			return n, fmt.Errorf("failed to delete migration %d from version store: %w", migration.Version, err)
 		}
 
-		revertCount++
+		n++
 
 		remoteVersion, err = m.Store.Version(ctx)
 		if err != nil {
 			if errors.Is(err, ErrInitialVersion) {
-				m.log("reverted %d migrations", revertCount)
-				return nil
+				return n, nil
 			}
-			return fmt.Errorf("failed to get version store state: %w", err)
+			return n, fmt.Errorf("failed to get version store state: %w", err)
 		}
 	}
 
-	m.log("reverted %d migrations", revertCount)
-
 	shouldRelease = true
-	return nil
+	return n, nil
 }
